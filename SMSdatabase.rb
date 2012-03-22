@@ -54,10 +54,9 @@ def getCounchDBData
   json = JSON.parse(json) 
 end
 
-
-#This updates the information when people are switching rooms 
 def updateCouchDBData(callerID, extra)
   
+  #Call the getCounchDBData method to get the database information
   json = getCounchDBData 
   url = URI.parse("http://sms.iriscouch.com/_utils") 
   server = Couch::Server.new(url.host, url.port) 
@@ -65,6 +64,7 @@ def updateCouchDBData(callerID, extra)
   server.put("/sms", "") 
   sessions = json["people"] 
 
+  
   i = 1
   not_exit = true
   not_found = true
@@ -76,36 +76,38 @@ def updateCouchDBData(callerID, extra)
       not_found = false
       not_exit = false
       
+      #The number exists, increment the conversation number
       if sessions["users"][i.to_s]["convoNum"].to_i < 4 && sessions["users"][i.to_s]["convoNum"].to_i > 0
-        #The number exists, increment the conversation number
         convoNum = sessions["users"][i.to_s]["convoNum"].to_i
         sessions["users"][i.to_s]["convoNum"] = (convoNum + 1).to_s
         
+      #This is the user's important message to save
       elsif sessions["users"][i.to_s]["convoNum"].to_i == 4
-
-        #This is the user's important message to save
         convoNum = sessions["users"][i.to_s]["convoNum"].to_i
         sessions["users"][i.to_s]["convoNum"] = (convoNum + 1).to_s
         sessions["users"][i.to_s]["Final Message"] = "#{extra}"
-        
+
+      #User has already gave their opinion, their last message will be always be the same        
       else 
-        #User has already gave their opinion, their last message will be always be the same
         convoNum = 5
       end
     end
     i += 1
   end    
-  
+
+  #Number does not exists, create it.  
   if not_found
-    #Number does not exists, create it.
+    convoNum = 0
     sessions["total"] = (sessions["total"].to_i + 1).to_s
     sessions["users"]["#{sessions["total"]}"] = {"callerID"=>"#{callerID}", "convoNum"=>"1"}
   end  
   
+  #Get JSON ready
   doc = <<-JSON
   {"type":"SMS Database","people": #{sessions.to_json}}
   JSON
   
+  #send the JSON back to the database
   server.put("/sms/currentUsers", doc.strip) 
   return convoNum
 end 
@@ -132,25 +134,40 @@ messages = ["Hello Tropo developer! Enter 1 if you love Tropo, 2 if you think it
 ]
 
 if $currentCall
+  
+  #This variable will correspond to which message should be played
   $status = updateCouchDBData($currentCall.callerID, $currentCall.initialText)
+  #This variable will use the users response to give the appropriate answer
   $reply = $currentCall.initialText
   
+  #These two responses only have an answer, not an answer and question
   if $status == 4 || $status == 5
     say "#{messages[$status.to_i]}"
+    
+  #This status needs to be broken up because of length
   elsif $status == 2
     say "#{messages[$status.to_i][$reply]}"
     say "#{messages[$status.to_i]['message']}"
+    
+  #The rest of the questions and answers are short enough to have in one say
   else
     say "#{messages[$status.to_i][$reply]} #{messages[$status.to_i]['message']}"
   end
+  
+  #There is no reason to keep the session alive, so we hangup 
   hangup
 else
   
+  #Grab the $numToDial parameter and initiate the SMS conversation
   call($numToDial, {
    :network => "SMS"})
    
+  #This primarily updates the database with the new number. This variable should always be 0
   status = updateCouchDBData($numToDial, nil)
   
+  #This gives the initial messsage with a question
   say(messages[status.to_i])
+  
+  #There is no reason to keep the session alive, so we hangup 
   hangup
 end
