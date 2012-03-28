@@ -146,7 +146,7 @@ if $currentCall
   #This variable will correspond to which message should be played
   $status = updateCouchDBData($currentCall.callerID, $currentCall.initialText)
   #This variable will use the users response to give the appropriate answer
-  #Also to note, I downcased the initial text so Capitaliation won't matter
+  #Also note, I downcased the initial text so capitalization won't matter
   $reply = $currentCall.initialText.downcase
   
   #These two responses only have an answer, not an answer and question
@@ -155,6 +155,8 @@ if $currentCall
     
   #This status needs to be broken up because of length
   elsif $status == 2
+    #If the user responds with an answer that does not correspond to my answers,
+    #It will ask the question again
     if messages[$status.to_i][$reply] == nil 
       $newStatus = updateCouchDBData($currentCall.callerID, "back")
       say "Sorry, you have entered a wrong choice. #{messages[$newStatus.to_i]['message']}" 
@@ -165,6 +167,8 @@ if $currentCall
     
   #The rest of the questions and answers are short enough to have in one say
   else
+    #If the user responds with an answer that does not correspond to my answers,
+    #It will ask the question again
     if messages[$status.to_i][$reply] == nil 
       $newStatus = updateCouchDBData($currentCall.callerID, "back") 
       say "Sorry, I didn't understand your choice. #{messages[$newStatus.to_i]['message']}" 
@@ -184,7 +188,7 @@ else
   #This primarily updates the database with the new number. This variable should always be 0
   status = updateCouchDBData($numToDial, nil)
   
-  #This gives the initial messsage with a question
+  #This sends the initial messsage with the first question
   say "#{messages[$status.to_i]['1']} #{messages[$status.to_i]['message']}"
   
   #There is no reason to keep the session alive, so we hangup 
