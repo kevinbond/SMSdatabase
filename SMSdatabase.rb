@@ -1,4 +1,4 @@
-require 'rubygems' 
+re 'rubygems' 
 require 'net/http' 
 require 'json' 
 
@@ -75,21 +75,29 @@ def updateCouchDBData(callerID, extra)
 
       not_found = false
       not_exit = false
-      
-      #The number exists, increment the conversation number
-      if sessions["users"][i.to_s]["convoNum"].to_i < 4 && sessions["users"][i.to_s]["convoNum"].to_i > 0
-        convoNum = sessions["users"][i.to_s]["convoNum"].to_i
-        sessions["users"][i.to_s]["convoNum"] = (convoNum + 1).to_s
-        
-      #This is the user's important message to save
-      elsif sessions["users"][i.to_s]["convoNum"].to_i == 4
-        convoNum = sessions["users"][i.to_s]["convoNum"].to_i
-        sessions["users"][i.to_s]["convoNum"] = (convoNum + 1).to_s
-        sessions["users"][i.to_s]["Final Message"] = "#{extra}"
+      log "checking convo ====> #{sessions["users"][i.to_s]["convoNum"].to_i}"
 
-      #User has already gave their opinion, their last message will be always be the same        
-      else 
-        convoNum = 5
+      if extra == "back"
+        log "beginning ====> #{sessions["users"][i.to_s]["convoNum"].to_i}"
+        convoNum = sessions["users"][i.to_s]["convoNum"].to_i - 1
+        log "convo now =========> #{convoNum}"
+        sessions["users"][i.to_s]["convoNum"] = (convoNum).to_s
+      else
+        #The number exists, increment the conversation number
+        if sessions["users"][i.to_s]["convoNum"].to_i < 3
+          convoNum = sessions["users"][i.to_s]["convoNum"].to_i + 1
+          sessions["users"][i.to_s]["convoNum"] = (convoNum).to_s
+        
+          #This is the user's important message to save
+        elsif sessions["users"][i.to_s]["convoNum"].to_i == 3
+          convoNum = sessions["users"][i.to_s]["convoNum"].to_i + 1
+          sessions["users"][i.to_s]["convoNum"] = (convoNum).to_s
+          sessions["users"][i.to_s]["Final Message"] = "#{extra}"
+
+          #User has already gave their opinion, their last message will be always be the same        
+        else 
+          convoNum = 5
+        end
       end
     end
     i += 1
@@ -99,7 +107,7 @@ def updateCouchDBData(callerID, extra)
   if not_found
     convoNum = 0
     sessions["total"] = (sessions["total"].to_i + 1).to_s
-    sessions["users"]["#{sessions["total"]}"] = {"callerID"=>"#{callerID}", "convoNum"=>"1"}
+    sessions["users"]["#{sessions["total"]}"] = {"callerID"=>"#{callerID}", "convoNum"=>"0"}
   end  
   
   #Get JSON ready
@@ -113,7 +121,8 @@ def updateCouchDBData(callerID, extra)
 end 
 
 
-messages = ["Hello Tropo developer! Enter 1 if you love Tropo, 2 if you think it's peachy keen or 3 if you think this is the easiest API ever created.",
+messages = [{"1"=>"Hello Tropo developer!",
+"message"=>"Enter 1 if you love Tropo, 2 if you think it's peachy keen or 3 if you think this is the easiest API ever created."},
 
 {"1" => "We love you, too.", 
 "2"=>"Only thing peachier is Grandma's cobbler.", 
@@ -138,20 +147,33 @@ if $currentCall
   #This variable will correspond to which message should be played
   $status = updateCouchDBData($currentCall.callerID, $currentCall.initialText)
   #This variable will use the users response to give the appropriate answer
-  $reply = $currentCall.initialText
+  $reply = $currentCall.initialText.downcase
   
+  log("reply ===========> #{$reply}")
   #These two responses only have an answer, not an answer and question
   if $status == 4 || $status == 5
     say "#{messages[$status.to_i]}"
     
   #This status needs to be broken up because of length
   elsif $status == 2
-    say "#{messages[$status.to_i][$reply]}"
-    say "#{messages[$status.to_i]['message']}"
+    if messages[$status.to_i][$reply] == nil 
+      $newStatus = updateCouchDBData($currentCall.callerID, "back")
+      log "new status =========> #{$newStatus}"
+      say "Sorry, you have entered a wrong choice. #{messages[$newStatus.to_i]['message']}" 
+    else
+      say "#{messages[$status.to_i][$reply]}"
+      say "#{messages[$status.to_i]['message']}"
+    end
     
   #The rest of the questions and answers are short enough to have in one say
   else
-    say "#{messages[$status.to_i][$reply]} #{messages[$status.to_i]['message']}"
+    if messages[$status.to_i][$reply] == nil 
+      $newStatus = updateCouchDBData($currentCall.callerID, "back") 
+      log "new status =========> #{$newStatus}"
+      say "Sorry, I didn't understand your choice. #{messages[$newStatus.to_i]['message']}" 
+    else
+      say "#{messages[$status.to_i][$reply]} #{messages[$status.to_i]['message']}"
+    end
   end
   
   #There is no reason to keep the session alive, so we hangup 
@@ -165,8 +187,9 @@ else
   #This primarily updates the database with the new number. This variable should always be 0
   status = updateCouchDBData($numToDial, nil)
   
+  log("first message#{messages[$status.to_i]['1']} and #{messages[$status.to_i]['message']} from #{status.to_i}")
   #This gives the initial messsage with a question
-  say(messages[status.to_i])
+  say "#{messages[$status.to_i]['1']} #{messages[$status.to_i]['message']}"
   
   #There is no reason to keep the session alive, so we hangup 
   hangup
