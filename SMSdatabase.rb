@@ -146,6 +146,7 @@ if $currentCall
   #This variable will correspond to which message should be played
   $status = updateCouchDBData($currentCall.callerID, $currentCall.initialText)
   #This variable will use the users response to give the appropriate answer
+  #Also to note, I downcased the initial text so Capitaliation won't matter
   $reply = $currentCall.initialText.downcase
   
   #These two responses only have an answer, not an answer and question
@@ -156,7 +157,6 @@ if $currentCall
   elsif $status == 2
     if messages[$status.to_i][$reply] == nil 
       $newStatus = updateCouchDBData($currentCall.callerID, "back")
-      log "new status =========> #{$newStatus}"
       say "Sorry, you have entered a wrong choice. #{messages[$newStatus.to_i]['message']}" 
     else
       say "#{messages[$status.to_i][$reply]}"
