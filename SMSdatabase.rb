@@ -1,4 +1,4 @@
-re 'rubygems' 
+require 'rubygems' 
 require 'net/http' 
 require 'json' 
 
@@ -75,12 +75,11 @@ def updateCouchDBData(callerID, extra)
 
       not_found = false
       not_exit = false
-      log "checking convo ====> #{sessions["users"][i.to_s]["convoNum"].to_i}"
 
+      #If the user sent an incorrect reply to an answer, set the convoNum back one and ask
+      #the question again
       if extra == "back"
-        log "beginning ====> #{sessions["users"][i.to_s]["convoNum"].to_i}"
         convoNum = sessions["users"][i.to_s]["convoNum"].to_i - 1
-        log "convo now =========> #{convoNum}"
         sessions["users"][i.to_s]["convoNum"] = (convoNum).to_s
       else
         #The number exists, increment the conversation number
@@ -149,7 +148,6 @@ if $currentCall
   #This variable will use the users response to give the appropriate answer
   $reply = $currentCall.initialText.downcase
   
-  log("reply ===========> #{$reply}")
   #These two responses only have an answer, not an answer and question
   if $status == 4 || $status == 5
     say "#{messages[$status.to_i]}"
@@ -169,7 +167,6 @@ if $currentCall
   else
     if messages[$status.to_i][$reply] == nil 
       $newStatus = updateCouchDBData($currentCall.callerID, "back") 
-      log "new status =========> #{$newStatus}"
       say "Sorry, I didn't understand your choice. #{messages[$newStatus.to_i]['message']}" 
     else
       say "#{messages[$status.to_i][$reply]} #{messages[$status.to_i]['message']}"
@@ -187,7 +184,6 @@ else
   #This primarily updates the database with the new number. This variable should always be 0
   status = updateCouchDBData($numToDial, nil)
   
-  log("first message#{messages[$status.to_i]['1']} and #{messages[$status.to_i]['message']} from #{status.to_i}")
   #This gives the initial messsage with a question
   say "#{messages[$status.to_i]['1']} #{messages[$status.to_i]['message']}"
   
